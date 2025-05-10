@@ -1,0 +1,22 @@
+[package]
+name = "traces"
+version = "0.0.1"
+edition = "2024"
+
+[features]
+otlp = ["dep:opentelemetry-otlp"]
+stdout = ["dep:opentelemetry-stdout"]
+
+[dependencies]
+configs = { git = "ssh://git@github.com/ruskit/configs.git", rev = "v0.0.0" }
+
+opentelemetry = { version = "0.29.1" }
+opentelemetry_sdk = { version = "0.29.0", features = ["rt-tokio"]}
+tracing = { version = "0.1.41" }
+thiserror = { version = "2.0.12" }
+serde = { version = "1.0.219", features = ["derive"] }
+tonic = { version = "0.12.3", features = ["tls-native-roots"] }
+tokio = { version = "1.45.0", features = ["default"] }
+
+opentelemetry-otlp = { version = "0.29.0", features = ["grpc-tonic", "tls", "tls-roots"], optional = true }
+opentelemetry-stdout = { version = "0.29.0", features = ["trace"], optional = true }
