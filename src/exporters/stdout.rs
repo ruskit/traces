@@ -10,11 +10,11 @@
 
 use crate::{errors::TracesError, get_sampler};
 use configs::{Configs, DynamicConfigs};
-use opentelemetry::{global, propagation::TextMapCompositePropagator, KeyValue};
+use opentelemetry::{KeyValue, global, propagation::TextMapCompositePropagator};
 use opentelemetry_sdk::{
-    propagation::{BaggagePropagator, TraceContextPropagator},
-    trace::{RandomIdGenerator, TracerProviderBuilder},
     Resource,
+    propagation::{BaggagePropagator, TraceContextPropagator},
+    trace::{RandomIdGenerator, SdkTracerProvider, TracerProviderBuilder},
 };
 use tracing::debug;
 
@@ -43,7 +43,7 @@ use tracing::debug;
 ///     stdout::install(&cfg).expect("Failed to install stdout exporter");
 /// }
 /// ```
-pub fn install<T>(cfg: &Configs<T>) -> Result<(), TracesError>
+pub fn install<T>(cfg: &Configs<T>) -> Result<SdkTracerProvider, TracesError>
 where
     T: DynamicConfigs,
 {
@@ -77,5 +77,5 @@ where
 
     debug!("traces::install stdout tracer installed");
 
-    Ok(())
+    Ok(provider)
 }

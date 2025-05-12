@@ -9,6 +9,7 @@
 
 use crate::errors::TracesError;
 use configs::{Configs, DynamicConfigs, TraceExporterKind};
+use opentelemetry_sdk::trace::SdkTracerProvider;
 use tracing::{debug, error};
 
 #[cfg(any(feature = "otlp", feature = "stdout"))]
@@ -40,13 +41,13 @@ use crate::exporters;
 ///     provider::init(&cfg).expect("Failed to initialize tracing");
 /// }
 /// ```
-pub fn init<T>(cfg: &Configs<T>) -> Result<(), TracesError>
+pub fn init<T>(cfg: &Configs<T>) -> Result<SdkTracerProvider, TracesError>
 where
     T: DynamicConfigs,
 {
     if !cfg.trace.enable {
         debug!("traces::init skipping trace export setup");
-        return Ok(());
+        return Ok(SdkTracerProvider::default());
     }
 
     debug!("traces::init creating the tracer...");
