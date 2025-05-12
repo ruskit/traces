@@ -9,8 +9,12 @@
 
 use crate::errors::TracesError;
 use configs::{Configs, DynamicConfigs, TraceExporterKind};
+use opentelemetry::{global, propagation::TextMapCompositePropagator};
 use opentelemetry_sdk::trace::SdkTracerProvider;
 use tracing::{debug, error};
+use opentelemetry_sdk::{
+    propagation::{BaggagePropagator, TraceContextPropagator},
+};
 
 #[cfg(any(feature = "otlp", feature = "stdout"))]
 use crate::exporters;
@@ -56,7 +60,13 @@ where
         TraceExporterKind::Stdout => {
             #[cfg(feature = "stdout")]
             {
-                exporters::stdout::install(cfg)
+                let tracer = exporters::stdout::install(cfg)?;
+                global::set_tracer_provider(tracer.clone());
+                global::set_text_map_propagator(TextMapCompositePropagator::new(vec![
+                    Box::new(TraceContextPropagator::new()),
+                    Box::new(BaggagePropagator::new()),
+                ]));
+                Ok(tracer)
             }
 
             #[cfg(not(feature = "stdout"))]
@@ -68,7 +78,13 @@ where
         TraceExporterKind::OtlpGrpc => {
             #[cfg(feature = "otlp")]
             {
-                exporters::otlp_grpc::install(cfg)
+                let tracer = exporters::otlp_grpc::install(cfg)?;
+                global::set_tracer_provider(tracer.clone());
+                global::set_text_map_propagator(TextMapCompositePropagator::new(vec![
+                    Box::new(TraceContextPropagator::new()),
+                    Box::new(BaggagePropagator::new()),
+                ]));
+                Ok(tracer)
             }
 
             #[cfg(not(feature = "otlp"))]
