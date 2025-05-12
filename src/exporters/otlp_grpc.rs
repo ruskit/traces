@@ -10,10 +10,9 @@
 
 use crate::{errors::TracesError, get_sampler};
 use configs::{Configs, DynamicConfigs};
-use opentelemetry::{KeyValue, global, propagation::TextMapCompositePropagator};
+use opentelemetry::KeyValue;
 use opentelemetry_otlp::{Compression, Protocol, SpanExporter, WithExportConfig, WithTonicConfig};
 use opentelemetry_sdk::{
-    propagation::{BaggagePropagator, TraceContextPropagator},
     resource::Resource,
     trace::{RandomIdGenerator, SdkTracerProvider, TracerProviderBuilder},
 };
@@ -106,12 +105,6 @@ where
         )
         .with_batch_exporter(exporter)
         .build();
-
-    global::set_tracer_provider(provider);
-    global::set_text_map_propagator(TextMapCompositePropagator::new(vec![
-        Box::new(TraceContextPropagator::new()),
-        Box::new(BaggagePropagator::new()),
-    ]));
 
     debug!("traces::install otlp tracer installed");
 

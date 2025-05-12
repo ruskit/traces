@@ -181,7 +181,7 @@ dependencies = [
 [[package]]
 name = "configs"
 version = "0.0.1"
-source = "git+ssh://git@github.com/ruskit/configs.git?rev=v0.0.0#32539681f7f6fe0daebd1260dcbc55618e06d278"
+source = "git+ssh://git@github.com/ruskit/configs.git?rev=v0.0.1#4e4191e7fc41f37c0dc889d5c249361629475610"
 dependencies = [
  "serde",
 ]

@@ -10,10 +10,9 @@
 
 use crate::{errors::TracesError, get_sampler};
 use configs::{Configs, DynamicConfigs};
-use opentelemetry::{KeyValue, global, propagation::TextMapCompositePropagator};
+use opentelemetry::KeyValue;
 use opentelemetry_sdk::{
     Resource,
-    propagation::{BaggagePropagator, TraceContextPropagator},
     trace::{RandomIdGenerator, SdkTracerProvider, TracerProviderBuilder},
 };
 use tracing::debug;
@@ -67,13 +66,6 @@ where
         )
         .with_simple_exporter(exporter)
         .build();
-
-    global::set_tracer_provider(provider);
-
-    global::set_text_map_propagator(TextMapCompositePropagator::new(vec![
-        Box::new(TraceContextPropagator::new()),
-        Box::new(BaggagePropagator::new()),
-    ]));
 
     debug!("traces::install stdout tracer installed");
 
