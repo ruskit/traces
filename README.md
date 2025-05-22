@@ -4,7 +4,7 @@
 [![Documentation](https://docs.rs/traces/badge.svg)](https://docs.rs/traces)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-A Rust library for distributed tracing using OpenTelemetry, providing easy configuration and support for multiple trace exporters.
+A Rust library for distributed tracing using OpenTelemetry, providing simple configuration and comprehensive support for multiple trace exporters with a focus on gRPC service instrumentation.
 
 ## Overview
 
@@ -16,9 +16,14 @@ The `traces` crate is part of the Ruskit collection, providing a standardized wa
 - Multiple exporter options:
   - OTLP gRPC exporter for production environments (`otlp` feature)
   - Stdout exporter for development and debugging (`stdout` feature)
-- Configurable trace sampling based on environment
-- Utilities for extracting and injecting trace context in gRPC metadata
-- Span creation and management helpers
+  - No-op exporter when no features are enabled (zero overhead)
+- Environment-aware sampling strategies:
+  - Always-on sampling for local development environments
+  - Configurable ratio-based sampling for other environments
+- First-class support for gRPC:
+  - Utilities for extracting trace context from incoming gRPC requests
+  - Utilities for injecting trace context into outgoing gRPC requests
+- Helper functions for span context creation and management
 
 ## Installation
 
@@ -26,9 +31,16 @@ Add the following to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-traces = { git = "ssh://git@github.com/ruskit/traces.git", rev = "v0.0.1" }
-# Enable optional exporters as needed
-features = ["otlp", "stdout"]
+traces = { git = "ssh://git@github.com/ruskit/traces.git", rev = "v0.0.1", features = ["otlp"] }
+```
+
+Available features:
+- `otlp` - Enable the OpenTelemetry Protocol exporter over gRPC (recommended for production)
+- `stdout` - Enable console output for traces (recommended for development)
+
+You can enable both features if needed:
+```toml
+traces = { git = "ssh://git@github.com/ruskit/traces.git", rev = "v0.0.1", features = ["otlp", "stdout"] }
 ```
 
 ## Usage
@@ -37,14 +49,10 @@ features = ["otlp", "stdout"]
 
 ```rust
 use traces::provider;
-use configs::Configs;
 
 fn main() {
-    // Initialize configuration
-    let cfg = Configs::new();
-    
-    // Initialize tracing
-    provider::init(&cfg).expect("Failed to initialize tracing");
+    // Initialize tracing - this will automatically load configuration from environment
+    let tracer_provider = provider::install().expect("Failed to initialize tracing");
     
     // Your application code...
 }
@@ -53,19 +61,22 @@ fn main() {
 ### Creating Spans
 
 ```rust
-use opentelemetry::trace::SpanKind;
-use traces::span_ctx;
+use opentelemetry::{global, trace::SpanKind};
+use traces::helpers;
 
-fn perform_operation(tracer: &BoxedTracer) {
-    // Create a new span
-    let ctx = span_ctx(tracer, SpanKind::Internal, "operation_name");
+fn perform_operation() {
+    // Get the global tracer
+    let tracer = global::tracer("my_service");
+    
+    // Create a new span context
+    let ctx = helpers::ctx(&tracer, SpanKind::Internal, "operation_name");
     
     // Perform work within the span context
     // ...
     
     // Get trace and span IDs if needed
-    let trace_id = traces::trace_id(&ctx);
-    let span_id = traces::span_id(&ctx);
+    let trace_id = helpers::trace_id(&ctx);
+    let span_id = helpers::span_id(&ctx);
 }
 ```
 
@@ -107,29 +118,78 @@ fn make_grpc_call(ctx: &Context) {
 
 ## Configuration
 
-The traces library uses the `configs` crate for configuration. The relevant configuration properties are:
+The traces library uses the `configs` crate for configuration. Configuration is automatically loaded from environment variables or configuration files. The relevant configuration properties are:
 
 ```rust
-// Enable or disable tracing
-trace.enable = true
+/// Application Configuration
+struct AppConfigs {
+    // Application name (used as service.name in traces)
+    name: String,
+    
+    // Application namespace (used as service.namespace in traces)
+    namespace: String,
+    
+    // Environment (development, staging, production)
+    // Local environments use AlwaysOn sampling strategy
+    env: Environment,
+}
 
-// Select exporter type
-trace.exporter = TraceExporterKind::OtlpGrpc  // or TraceExporterKind::Stdout
-
-// For OTLP exporter
-metric.host = "https://collector.example.com:4317"
-metric.export_timeout = 30  // seconds
-trace.header_access_key = "api-key"
-trace.access_key = "your-api-key"
-
-// Sampling configuration
-trace.export_rate_base = 0.1  // Sample 10% of traces in non-local environments
+/// OpenTelemetry Configuration
+struct OTLPConfigs {
+    // OTLP exporter endpoint
+    endpoint: String,            // default: http://localhost:4317
+    
+    // Timeout for exporting spans
+    exporter_timeout: Duration,  // default: 30 seconds
+    
+    // Sample rate for non-local environments (0.0 to 1.0)
+    exporter_rate_base: f64,     // default: 0.1 (10% of traces)
+}
 ```
 
-## Features
+### Feature Flags
 
-- `otlp`: Enables the OpenTelemetry Protocol (OTLP) exporter over gRPC
-- `stdout`: Enables console output for traces
+The exporter used is determined by feature flags in your `Cargo.toml`:
+
+- When `stdout` feature is enabled, traces are exported to the console
+- When `otlp` feature is enabled, traces are exported via OTLP gRPC
+- When neither feature is enabled, a no-op tracer is installed
+
+For example:
+```toml
+[dependencies]
+traces = { git = "ssh://git@github.com/ruskit/traces.git", rev = "v0.0.1", features = ["otlp"] }
+```
+
+## Advanced Usage
+
+### Error Handling
+
+The library defines common error types for tracing operations:
+
+```rust
+enum TracesError {
+    // An unexpected internal error occurred
+    InternalError,
+    
+    // The requested exporter requires specific feature flags to be enabled
+    InvalidFeaturesError,
+    
+    // Error occurred during type conversion
+    ConversionError,
+    
+    // Failed to create the OpenTelemetry exporter provider
+    ExporterProviderError,
+}
+```
+
+### Resource Attributes
+
+The tracer automatically sets several resource attributes for each trace:
+- `service.name` - The application name from configuration
+- `service.namespace` - The application namespace from configuration 
+- `environment` - The deployment environment
+- `library.language` - Set to "rust"
 
 ## License
 
