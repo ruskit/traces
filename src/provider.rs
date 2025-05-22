@@ -8,16 +8,9 @@
 //! based on the application configuration.
 
 use crate::errors::TracesError;
-use configs::{Configs, DynamicConfigs, TraceExporterKind};
-use opentelemetry::{global, propagation::TextMapCompositePropagator};
-use opentelemetry_sdk::trace::SdkTracerProvider;
-use tracing::{debug, error};
-use opentelemetry_sdk::{
-    propagation::{BaggagePropagator, TraceContextPropagator},
-};
-
-#[cfg(any(feature = "otlp", feature = "stdout"))]
 use crate::exporters;
+use opentelemetry_sdk::trace::SdkTracerProvider;
+use tracing::info;
 
 /// Initialize the OpenTelemetry trace provider based on the provided configuration.
 ///
@@ -42,56 +35,24 @@ use crate::exporters;
 ///
 /// fn main() {
 ///     let cfg = Configs::new();
-///     provider::init(&cfg).expect("Failed to initialize tracing");
+///     provider::install().expect("Failed to initialize tracing");
 /// }
 /// ```
-pub fn init<T>(cfg: &Configs<T>) -> Result<SdkTracerProvider, TracesError>
-where
-    T: DynamicConfigs,
-{
-    if !cfg.trace.enable {
-        debug!("traces::init skipping trace export setup");
-        return Ok(SdkTracerProvider::default());
+pub fn install() -> Result<SdkTracerProvider, TracesError> {
+    info!("traces::install configuring tracer provider");
+
+    #[cfg(feature = "stdout")]
+    {
+        let tracer = exporters::stdout::install()?;
+        Ok(tracer)
     }
 
-    debug!("traces::init creating the tracer...");
-
-    match cfg.trace.exporter {
-        TraceExporterKind::Stdout => {
-            #[cfg(feature = "stdout")]
-            {
-                let tracer = exporters::stdout::install(cfg)?;
-                global::set_tracer_provider(tracer.clone());
-                global::set_text_map_propagator(TextMapCompositePropagator::new(vec![
-                    Box::new(TraceContextPropagator::new()),
-                    Box::new(BaggagePropagator::new()),
-                ]));
-                Ok(tracer)
-            }
-
-            #[cfg(not(feature = "stdout"))]
-            {
-                error!("stdout traces required to configure features = [stdout]");
-                Err(TracesError::InvalidFeaturesError)
-            }
-        }
-        TraceExporterKind::OtlpGrpc => {
-            #[cfg(feature = "otlp")]
-            {
-                let tracer = exporters::otlp_grpc::install(cfg)?;
-                global::set_tracer_provider(tracer.clone());
-                global::set_text_map_propagator(TextMapCompositePropagator::new(vec![
-                    Box::new(TraceContextPropagator::new()),
-                    Box::new(BaggagePropagator::new()),
-                ]));
-                Ok(tracer)
-            }
-
-            #[cfg(not(feature = "otlp"))]
-            {
-                error!("otlp traces required to configure features = [otlp]");
-                Err(TracesError::InvalidFeaturesError)
-            }
-        }
+    #[cfg(feature = "otlp")]
+    {
+        let tracer = exporters::otlp_grpc::install()?;
+        Ok(tracer)
     }
+
+    #[cfg(not(any(feature = "stdout", feature = "otlp")))]
+    return exporters::noop::install();
 }
