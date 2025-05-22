@@ -4,7 +4,7 @@ version = "0.0.1"
 edition = "2024"
 
 [features]
-otlp = ["dep:opentelemetry-otlp"]
+otlp = ["dep:opentelemetry-otlp", "dep:tonic", "dep:tokio"]
 stdout = ["dep:opentelemetry-stdout"]
 
 [dependencies]
@@ -15,8 +15,11 @@ opentelemetry_sdk = { version = "0.29.0", features = ["rt-tokio"]}
 tracing = { version = "0.1.41" }
 thiserror = { version = "2.0.12" }
 serde = { version = "1.0.219", features = ["derive"] }
-tonic = { version = "0.12.3", features = ["tls-native-roots"] }
-tokio = { version = "1.45.0", features = ["default"] }
 
+# OTLP Feature
+tonic = { version = "0.12.3", features = ["tls-native-roots"], optional = true }
+tokio = { version = "1.45.0", features = ["default"], optional = true }
 opentelemetry-otlp = { version = "0.29.0", features = ["grpc-tonic", "tls", "tls-roots"], optional = true }
+
+# Stdout Feature
 opentelemetry-stdout = { version = "0.29.0", features = ["trace"], optional = true }

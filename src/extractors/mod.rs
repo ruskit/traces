@@ -7,4 +7,5 @@
 //! This module provides extractors for retrieving trace context information
 //! from various transport protocols and formats.
 
+#[cfg(feature = "otlp")]
 pub mod grpc;

@@ -7,4 +7,5 @@
 //! This module provides injectors for propagating trace context information
 //! into various transport protocols and formats.
 
+#[cfg(feature = "otlp")]
 pub mod grpc;
