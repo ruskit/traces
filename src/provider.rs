@@ -12,45 +12,48 @@ use crate::exporters;
 use opentelemetry_sdk::trace::SdkTracerProvider;
 use tracing::info;
 
-/// Initialize the OpenTelemetry trace provider based on the provided configuration.
+/// Initialize the OpenTelemetry trace provider based on feature flags.
 ///
-/// This function selects and configures the appropriate tracer exporter (stdout or OTLP gRPC)
-/// based on the application configuration. If tracing is disabled in the configuration,
-/// this function will skip the setup process.
-///
-/// # Arguments
-///
-/// * `cfg` - Application configuration containing tracing settings
+/// This function selects and configures the appropriate tracer exporter based on enabled features:
+/// - When both `otlp` and `stdout` features are enabled, OTLP takes precedence
+/// - When only `otlp` is enabled, uses the OTLP gRPC exporter
+/// - When only `stdout` is enabled, uses the stdout exporter for console output
+/// - When no features are enabled, uses a no-op tracer
 ///
 /// # Returns
 ///
-/// * `Ok(())` if initialization is successful or tracing is disabled
+/// * `Ok(SdkTracerProvider)` if initialization is successful
 /// * `Err(TracesError)` if initialization fails or required features are not enabled
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```no_run
 /// use traces::provider;
-/// use configs::Configs;
 ///
 /// fn main() {
-///     let cfg = Configs::new();
-///     provider::install().expect("Failed to initialize tracing");
+///     let tracer_provider = provider::install().expect("Failed to initialize tracing");
 /// }
 /// ```
 pub fn install() -> Result<SdkTracerProvider, TracesError> {
     info!("traces::install configuring tracer provider");
 
-    #[cfg(feature = "stdout")]
+    #[cfg(all(feature = "otlp", feature = "stdout"))]
     {
-        let tracer = exporters::stdout::install()?;
-        Ok(tracer)
+        // When both features are enabled, prefer OTLP
+        let tracer = exporters::otlp_grpc::install()?;
+        return Ok(tracer);
     }
 
-    #[cfg(feature = "otlp")]
+    #[cfg(all(feature = "otlp", not(feature = "stdout")))]
     {
         let tracer = exporters::otlp_grpc::install()?;
-        Ok(tracer)
+        return Ok(tracer);
+    }
+
+    #[cfg(all(feature = "stdout", not(feature = "otlp")))]
+    {
+        let tracer = exporters::stdout::install()?;
+        return Ok(tracer);
     }
 
     #[cfg(not(any(feature = "stdout", feature = "otlp")))]

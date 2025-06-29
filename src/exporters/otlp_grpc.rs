@@ -37,11 +37,9 @@ use tracing::{error, info};
 ///
 /// ```no_run
 /// use traces::exporters::otlp_grpc;
-/// use configs::Configs;
 ///
 /// fn main() {
-///     let cfg = Configs::new();
-///     otlp_grpc::install().expect("Failed to install OTLP exporter");
+///     let provider = otlp_grpc::install().expect("Failed to install OTLP exporter");
 /// }
 /// ```
 pub fn install() -> Result<SdkTracerProvider, TracesError> {

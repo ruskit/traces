@@ -36,11 +36,9 @@ use tracing::info;
 ///
 /// ```no_run
 /// use traces::exporters::stdout;
-/// use configs::Configs;
 ///
 /// fn main() {
-///     let cfg = Configs::new();
-///     stdout::install().expect("Failed to install stdout exporter");
+///     let provider = stdout::install().expect("Failed to install stdout exporter");
 /// }
 /// ```
 pub fn install() -> Result<SdkTracerProvider, TracesError> {

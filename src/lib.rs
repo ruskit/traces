@@ -19,16 +19,12 @@
 //!
 //! To initialize tracing with a configuration:
 //!
-//! ```rust
+//! ```no_run
 //! use traces::provider;
-//! use configs::Configs;
 //!
 //! fn main() {
-//!     // Initialize configuration
-//!     let cfg = Configs::new();
-//!     
 //!     // Initialize tracing
-//!     provider::init(&cfg).expect("Failed to initialize tracing");
+//!     let tracer_provider = provider::install().expect("Failed to initialize tracing");
 //! }
 //! ```
 
